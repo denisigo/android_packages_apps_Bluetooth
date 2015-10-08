@@ -20,17 +20,14 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothUuid;
 import android.bluetooth.IBluetoothA2dp;
-import android.content.Context;
-import android.content.Intent;
 import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.util.Log;
+import com.android.bluetooth.avrcp.Avrcp;
 import com.android.bluetooth.btservice.ProfileService;
 import com.android.bluetooth.Utils;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Provides Bluetooth A2DP profile, as a service in the Bluetooth application.
@@ -178,7 +175,7 @@ public class A2dpService extends ProfileService {
 
     public boolean setPriority(BluetoothDevice device, int priority) {
         enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
-                                       "Need BLUETOOTH_ADMIN permission");
+                "Need BLUETOOTH_ADMIN permission");
 
         if ((mStateMachine.isConnectedSrc(device)) &&
             (priority == BluetoothProfile.PRIORITY_AUTO_CONNECT)) {
@@ -215,7 +212,7 @@ public class A2dpService extends ProfileService {
 
     public int getLastConnectedA2dpSepType(BluetoothDevice device) {
         enforceCallingOrSelfPermission(BLUETOOTH_ADMIN_PERM,
-                                       "Need BLUETOOTH_ADMIN permission");
+                "Need BLUETOOTH_ADMIN permission");
         int sepType = Settings.Global.getInt(getContentResolver(),
             Settings.Global.getBluetoothLastConnectedA2dpSepTypeKey(device.getAddress()),
             BluetoothProfile.PROFILE_A2DP_UNDEFINED);

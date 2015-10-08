@@ -1023,7 +1023,7 @@ static JNINativeMethod sMethods[] = {
 
 int register_com_android_bluetooth_avrcp(JNIEnv* env)
 {
-    return jniRegisterNativeMethods(env, "com/android/bluetooth/a2dp/Avrcp",
+    return jniRegisterNativeMethods(env, "com/android/bluetooth/avrcp/Avrcp",
                                     sMethods, NELEM(sMethods));
 }
 

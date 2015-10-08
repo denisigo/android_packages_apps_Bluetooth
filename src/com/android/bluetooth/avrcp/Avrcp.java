@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-package com.android.bluetooth.a2dp;
-
-import java.util.Timer;
-import java.util.TimerTask;
+package com.android.bluetooth.avrcp;
 
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothA2dp;
+import android.bluetooth.BluetoothAvrcp;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -34,15 +32,10 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.os.ParcelUuid;
-import android.os.PowerManager;
-import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.util.Log;
 import android.content.BroadcastReceiver;
-import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.ProfileService;
 import com.android.bluetooth.Utils;
 import com.android.internal.util.IState;
@@ -50,15 +43,13 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import java.util.Iterator;
 
 /**
  * support Bluetooth AVRCP profile.
  * support metadata, play status and event notification
  */
-final class Avrcp {
+public final class Avrcp {
     private static final boolean DEBUG = true;
     private static final String TAG = "Avrcp";
 
@@ -94,10 +85,6 @@ final class Avrcp {
     private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
     private int mSkipAmount;
     private int keyPressState;
-
-    /* AVRC IDs from avrc_defs.h */
-    private static final int AVRC_ID_REWIND = 0x48;
-    private static final int AVRC_ID_FAST_FOR = 0x49;
 
     /* BTRC features */
     public static final int BTRC_FEAT_METADATA = 0x01;
@@ -414,7 +401,7 @@ final class Avrcp {
         mMediaPlayers.add(mediaPlayerInfo2);
     }
 
-    static Avrcp make(Context context) {
+    public static Avrcp make(Context context) {
         if (DEBUG) Log.v(TAG, "make");
         Avrcp ar = new Avrcp(context);
         ar.start();
@@ -665,8 +652,8 @@ final class Avrcp {
                 break;
 
             case MESSAGE_VOLUME_CHANGED:
-                if (DEBUG) Log.v(TAG, "MESSAGE_VOLUME_CHANGED: volume=" + msg.arg1 +
-                                                              " ctype=" + msg.arg2);
+                if (DEBUG) Log.v(TAG, "MESSAGE_VOLUME_CHANGED: volume=" + ((byte) msg.arg1 & 0x7f)
+                        + " ctype=" + msg.arg2);
 
                 if (msg.arg2 == AVRC_RSP_ACCEPT || msg.arg2 == AVRC_RSP_REJ) {
                     if (mVolCmdInProgress == false) {
@@ -680,8 +667,11 @@ final class Avrcp {
                 if (mAbsoluteVolume != msg.arg1 && (msg.arg2 == AVRC_RSP_ACCEPT ||
                                                     msg.arg2 == AVRC_RSP_CHANGED ||
                                                     msg.arg2 == AVRC_RSP_INTERIM)) {
-                    notifyVolumeChanged(msg.arg1);
-                    mAbsoluteVolume = msg.arg1;
+                    byte absVol = (byte)((byte)msg.arg1 & 0x7f); // discard MSB as it is RFD
+                    notifyVolumeChanged((int)absVol);
+                    mAbsoluteVolume = absVol;
+                    long pecentVolChanged = ((long)absVol * 100) / 0x7f;
+                    Log.e(TAG, "percent volume changed: " + pecentVolChanged + "%");
                 } else if (msg.arg2 == AVRC_RSP_REJ) {
                     Log.e(TAG, "setAbsoluteVolume call rejected");
                 }
@@ -1104,7 +1094,7 @@ final class Avrcp {
             Log.v(TAG, "Post MESSAGE_SET_ADDR_PLAYER_REQ_TIMEOUT");
         } else {
             if (DEBUG) Log.v(TAG, "setAddressedPlayer fails: No such media player available");
-            setAdressedPlayerRspNative ((byte)ERR_INVALID_PLAYER_ID);
+            setAdressedPlayerRspNative((byte) ERR_INVALID_PLAYER_ID);
         }
     }
     private void getFolderItems(byte scope, int start, int end, int attrCnt) {
@@ -1131,7 +1121,7 @@ final class Avrcp {
                 }
             }
             if (DEBUG) Log.v(TAG, "Number of available MediaPlayers = " + availableMediaPlayers);
-            getFolderItemsRspNative ((byte)0x04, 0x1357, availableMediaPlayers, folderItems, folderItemLengths);
+            getFolderItemsRspNative((byte) 0x04, 0x1357, availableMediaPlayers, folderItems, folderItemLengths);
         }
     }
     private void registerNotification(int eventId, int param) {
@@ -1264,10 +1254,10 @@ final class Avrcp {
 
     private void handlePassthroughCmd(int id, int keyState) {
         switch (id) {
-            case AVRC_ID_REWIND:
+            case BluetoothAvrcp.PASSTHROUGH_ID_REWIND:
                 rewind(keyState);
                 break;
-            case AVRC_ID_FAST_FOR:
+            case BluetoothAvrcp.PASSTHROUGH_ID_FAST_FOR:
                 fastForward(keyState);
                 break;
         }
@@ -1994,6 +1984,7 @@ private void updateLocalPlayerSettings( byte[] data) {
     private native boolean sendSettingsTextRspNative(int num_attr, byte[] attr, int length, String[]text);
     private native boolean sendValueTextRspNative(int num_attr, byte[] attr, int length, String[]text);
     private native boolean registerNotificationPlayerAppRspNative(int type, byte numberattr, byte[]attr);
+    private native boolean sendPassThroughCommandNative(int keyCode, int keyState);
 
     /**
       * A class to encapsulate all the information about a media player.
